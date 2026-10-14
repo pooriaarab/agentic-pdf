@@ -1,108 +1,58 @@
-# Agentic scaffold
+# Agentic PDF
 
-Canonical scaffold for a CLI plus library plus MCP server pack.
+Fill form fields. Merge files. Split one PDF.
 
-Clone this repo to start a new pack. It gives one core with three
-faces: a terminal command, an npm import, and an MCP server.
+Local dry runs are the default. No network is used unless you pass `--live`.
 
-## What you get
+## Install
 
-- One core: brand config, logs, guards, routing, dry run, cost reports.
-- Three faces over that core: CLI, library, MCP server.
-- A frozen core contract, so packs share one API.
-- A worker entry and a wrangler sample for edge deploys.
-- Build, typecheck, and tests that pass from a fresh clone.
+```sh
+npm install agentic-pdf
+```
 
 ## Quick start
 
-```sh
-git clone https://github.com/pooriaarab/agentic-scaffold.git my-pack
-cd my-pack
-npm install
-npm run build
-npm run typecheck
-npm test
-```
-
-Run the command:
+Preview a form fill:
 
 ```sh
-node dist/cli.js summary --text "hello world hello"
+npx agentic-pdf fill --input form.pdf --output filled.pdf --fields '{"name":"Ada"}'
 ```
 
-Call the library:
+It prints JSON and does not change a file. Pass `--live` to use the configured vendor. Set `AGENTIC_PDF_API_KEY` first.
+
+## Three uses
+
+### CLI
+
+```sh
+agentic-pdf merge --input first.pdf --input second.pdf --output merged.pdf
+agentic-pdf split --input source.pdf --output pages.pdf --pages 1,3
+```
+
+### Library
 
 ```js
-import { summarizeText } from "./dist/index.js";
+import { fillPdf } from "agentic-pdf";
 
-console.log(summarizeText("hello world hello"));
+const result = await fillPdf({
+  input: "form.pdf",
+  output: "filled.pdf",
+  fields: { name: "Ada" },
+});
 ```
 
-Start the MCP server:
+### MCP
 
 ```sh
-node dist/cli.js mcp
+npx agentic-pdf mcp
 ```
 
-## Three usecases
+The server exposes `fill_pdf`, `merge_pdfs`, and `split_pdf`. Their result shapes match the CLI and library.
 
-1. You run one text summary from the terminal.
-2. You import the summary function in a script.
-3. You let an agent call the same function as an MCP tool.
+## Live calls
 
-## Clone checklist
-
-This repo is a template. Replace each slot in each file that holds it.
-
-- `__PACK_NAME__`: the directory name, like `my-pack`.
-- `__NPM_NAME__`: the npm name, like `agentic-<block>` (bare name, never @pooriaarab/ scoped unless the brief says scoped).
-- `__PACK_COMMAND__`: the terminal command, like `my-pack`.
-- `__PACK_DESCRIPTION__`: one plain sentence, under 100 chars.
-- `__PACK_KEYWORDS__`: plain keywords, like `notes, search, cli`.
-- `__GITHUB_USER__`: the repo owner, like `pooriaarab`.
-
-Slot files: `AGENTS.md`, `SKILL.md`, `RULES.md`, `llms.txt`,
-`server.json`, `.mcp.json`, `wrangler.jsonc`.
-
-Then rename the scaffold identity itself:
-
-- `package.json`: name, bin commands, mcpName. Remove `"private": true`.
-- `src/index.ts`: the `DEFAULT_BRAND` fields.
-- This file: the pitch and the examples above.
-
-At publish time, set `server.json` version to the npm version and
-`server.json` repository id from `gh api repos/OWNER/REPO --jq .id`.
-
-## Gates
-
-Run all three before you push a pack:
-
-```sh
-npm run build && npm run typecheck && npm test
-```
-
-Then run the real installed CLI once from a tarball:
-
-```sh
-npm pack
-npx --yes --package ./pooriaarab-agentic-scaffold-0.1.0.tgz agentic-pack summary --text "hello"
-```
-
-## Release flow
-
-Push to `main` for review. Merge to `release` to publish. The
-publish workflow ships only when the version is new.
-
-## Layout
-
-- `src/index.ts`: the library face.
-- `src/cli.ts`: the terminal face.
-- `src/mcp.ts`: the MCP server. `src/mcp-bin.ts` starts it.
-- `src/worker.ts`: the edge worker face.
-- `src/core.ts`: the shared core.
-- `agentic-core.d.ts`: the frozen contract.
-- `docs/agentic-core.md`: the contract in plain words.
+`--live` requires `AGENTIC_PDF_API_KEY`. A missing key returns a clear error. Vendor errors are returned without being hidden.
 
 ## License
 
-MIT. See `LICENSE`.
+MIT.
