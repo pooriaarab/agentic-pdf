@@ -88,28 +88,64 @@ export class LocalPdfVendor implements PdfVendor {
 export class VendorPdfAdapter implements PdfVendor {
   private readonly apiKey: string | undefined;
   private readonly fetch: typeof globalThis.fetch;
-  constructor(apiKey = process.env.AGENTIC_PDF_API_KEY, fetchImpl: typeof globalThis.fetch = globalThis.fetch) { this.apiKey = apiKey; this.fetch = fetchImpl; }
+
+  constructor(
+    apiKey = process.env.AGENTIC_PDF_API_KEY,
+    fetchImpl: typeof globalThis.fetch = globalThis.fetch,
+  ) {
+    this.apiKey = apiKey;
+    this.fetch = fetchImpl;
+  }
+
   private requireKey(): string {
     if (!this.apiKey) throw new VendorError("missing AGENTIC_PDF_API_KEY for --live");
     return this.apiKey;
   }
-  private async call(operation: PdfOperation, request: Omit<FillPdfRequest, "dryRun"> | Omit<MergePdfsRequest, "dryRun"> | Omit<SplitPdfRequest, "dryRun">): Promise<void> {
+
+  private async call(path: string, body: Record<string, unknown>): Promise<void> {
     const apiKey = this.requireKey();
     let response: Response;
     try {
-      response = await this.fetch("https://pdf-services.adobe.io/operation/createpdf", {
+      response = await this.fetch(`https://pdf-services.adobe.io/operation/${path}`, {
         method: "POST",
-        headers: { authorization: `Bearer ${apiKey}`, "content-type": "application/json" },
-        body: JSON.stringify({ operation, ...request }),
+        headers: {
+          authorization: `Bearer ${apiKey}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify(body),
       });
     } catch (error) {
-      throw new VendorError(`Adobe Acrobat Services request failed: ${error instanceof Error ? error.message : String(error)}`, { cause: error });
+      throw new VendorError(
+        `Adobe Acrobat PDF Services request failed: ${error instanceof Error ? error.message : String(error)}`,
+        { cause: error },
+      );
     }
-    if (!response.ok) throw new VendorError(`Adobe Acrobat Services returned HTTP ${response.status}`);
+    if (!response.ok) {
+      throw new VendorError(`Adobe Acrobat PDF Services returned HTTP ${response.status}`);
+    }
   }
-  async fill(request: Omit<FillPdfRequest, "dryRun">): Promise<void> { await this.call("fill", request); }
-  async merge(request: Omit<MergePdfsRequest, "dryRun">): Promise<void> { await this.call("merge", request); }
-  async split(request: Omit<SplitPdfRequest, "dryRun">): Promise<void> { await this.call("split", request); }
+
+  async fill(request: Omit<FillPdfRequest, "dryRun">): Promise<void> {
+    await this.call("setformdata", {
+      assetID: request.input,
+      jsonFormFieldsData: request.fields,
+    });
+  }
+
+  async merge(request: Omit<MergePdfsRequest, "dryRun">): Promise<void> {
+    await this.call("combinepdf", {
+      assets: request.inputs.map((assetID) => ({ assetID })),
+    });
+  }
+
+  async split(request: Omit<SplitPdfRequest, "dryRun">): Promise<void> {
+    await this.call("splitpdf", {
+      assetID: request.input,
+      splitoption: {
+        pageRanges: request.pages.map((page) => ({ start: page, end: page })),
+      },
+    });
+  }
 }
 
 export async function fillPdf(request: FillPdfRequest, vendor: PdfVendor = new LocalPdfVendor()): Promise<PdfResult> {
