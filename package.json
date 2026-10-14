@@ -1,6 +1,6 @@
 {
   "name": "agentic-pdf",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Preview PDF fill, merge, and split requests with a Node.js SDK, CLI, and MCP server; includes an Adobe Acrobat PDF Services adapter scaffold.",
   "keywords": [
     "pdf",
